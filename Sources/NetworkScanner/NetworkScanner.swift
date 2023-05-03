@@ -7,17 +7,18 @@ import NetworkInterfaceChangeMonitoring
 public struct NetworkScanner: AsyncSequence {
     private let interfaceFilter: (NetworkInterface) -> Bool
     private let oneFullScanOnly: Bool
-    private let reportTimeouts: Bool
+    private let reportMisses: Bool
+    private let concurrencyLimit: Int?
     private let probe: (String) async throws -> Bool
 
     public init(interfaceFilter: @escaping (NetworkInterface) -> Bool = { !$0.loopback },
                 oneFullScanOnly: Bool = false,
-                reportTimeouts: Bool = false,
+                reportMisses: Bool = false,
                 concurrencyLimit: Int? = nil,
                 probe: @escaping (String) async throws -> Bool) {
         self.interfaceFilter = interfaceFilter
         self.oneFullScanOnly = oneFullScanOnly
-        self.reportTimeouts = reportTimeouts
+        self.reportMisses = reportMisses
         self.concurrencyLimit = concurrencyLimit
         self.probe = probe
     }
@@ -27,8 +28,7 @@ public struct NetworkScanner: AsyncSequence {
 
         public enum Conclusion: Sendable {
             case hit
-            case timeout
-            case error
+            case miss
         }
 
         public let conclusion: Conclusion
@@ -39,7 +39,7 @@ public struct NetworkScanner: AsyncSequence {
     public func makeAsyncIterator() -> Iterator {
         return Iterator(interfaceFilter: interfaceFilter,
                         oneFullScanOnly: oneFullScanOnly,
-                        reportTimeouts: reportTimeouts,
+                        reportMisses: reportMisses,
                         concurrencyLimit: concurrencyLimit,
                         probe: probe)
     }
@@ -50,7 +50,7 @@ public struct NetworkScanner: AsyncSequence {
 
         fileprivate init(interfaceFilter: @escaping (NetworkInterface) -> Bool,
                          oneFullScanOnly: Bool,
-                         reportTimeouts: Bool,
+                         reportMisses: Bool,
                          concurrencyLimit: Int?,
                          probe: @escaping (String) async throws -> Bool) {
             self.overarchingTask = Task { [channel] in
@@ -65,6 +65,7 @@ public struct NetworkScanner: AsyncSequence {
 
                                 try await NetworkScanner.Iterator.scan(interface: interface,
                                                                        interfaceFilter: interfaceFilter,
+                                                                       reportMisses: reportMisses,
                                                                        probe: probe,
                                                                        channel: channel,
                                                                        taskGroup: &taskGroup,
@@ -82,6 +83,7 @@ public struct NetworkScanner: AsyncSequence {
                                 case .added:
                                     try await NetworkScanner.Iterator.scan(interface: change.interface,
                                                                            interfaceFilter: interfaceFilter,
+                                                                           reportMisses: reportMisses,
                                                                            probe: probe,
                                                                            channel: channel,
                                                                            taskGroup: &taskGroup,
@@ -120,6 +122,7 @@ public struct NetworkScanner: AsyncSequence {
 
         private static func scan(interface: NetworkInterface,
                                  interfaceFilter: (NetworkInterface) -> Bool,
+                                 reportMisses: Bool,
                                  probe: @escaping (String) async throws -> Bool,
                                  channel: AsyncThrowingChannel<Result, Error>,
                                  taskGroup: inout ThrowingTaskGroup<Void, Error>,
@@ -165,6 +168,10 @@ public struct NetworkScanner: AsyncSequence {
                             await channel.send(Result(address: addressString, conclusion: .hit))
                         } else {
                             print("\t\tReturning miss for \(addressString).")
+
+                            if reportMisses {
+                                await channel.send(Result(address: addressString, conclusion: .miss))
+                            }
                         }
                     }
                 }
