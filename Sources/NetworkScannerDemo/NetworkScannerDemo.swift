@@ -30,10 +30,6 @@ public struct NetworkScannerDemo {
         }
 
         print("\(resultCount) result(s) in total.")
-
-        while true {
-            try await Task.sleep(for: .seconds(1))
-        }
     }
 }
 
