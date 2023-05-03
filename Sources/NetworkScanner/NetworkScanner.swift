@@ -55,10 +55,10 @@ public struct NetworkScanner: AsyncSequence {
                          probe: @escaping (String) async throws -> Bool) {
             self.overarchingTask = Task { [channel] in
                 do {
-                    // max(1, …) to ensure that there's always at least one task that can run at a time, so as to make forward progress.
-                    var taskTokens = Swift.max(1, concurrencyLimit ?? Int.max)
-
                     try await withThrowingTaskGroup(of: Void.self) { taskGroup in
+                        // max(1, …) to ensure that there's always at least one task that can run at a time, so as to make forward progress.
+                        var taskTokens = Swift.max(1, concurrencyLimit ?? Int.max)
+
                         if oneFullScanOnly {
                             for interface in try NetworkInterface.all {
                                 guard !Task.isCancelled else { break }
