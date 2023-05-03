@@ -7,7 +7,9 @@ public struct NetworkScannerDemo {
 
         var resultCount = 0
 
-        for try await result in NetworkScanner(oneFullScanOnly: false, probe: { _ in try await Task.sleep(for: .seconds(1)); return true }) {
+        for try await result in NetworkScanner(oneFullScanOnly: false,
+                                               concurrencyLimit: 3,
+                                               probe: { _ in try await Task.sleep(for: .seconds(1)); return Bool.random() }) {
             resultCount += 1
             print("#\(resultCount): \(result)")
 

@@ -13,10 +13,12 @@ public struct NetworkScanner: AsyncSequence {
     public init(interfaceFilter: @escaping (NetworkInterface) -> Bool = { !$0.loopback },
                 oneFullScanOnly: Bool = false,
                 reportTimeouts: Bool = false,
+                concurrencyLimit: Int? = nil,
                 probe: @escaping (String) async throws -> Bool) {
         self.interfaceFilter = interfaceFilter
         self.oneFullScanOnly = oneFullScanOnly
         self.reportTimeouts = reportTimeouts
+        self.concurrencyLimit = concurrencyLimit
         self.probe = probe
     }
 
@@ -38,6 +40,7 @@ public struct NetworkScanner: AsyncSequence {
         return Iterator(interfaceFilter: interfaceFilter,
                         oneFullScanOnly: oneFullScanOnly,
                         reportTimeouts: reportTimeouts,
+                        concurrencyLimit: concurrencyLimit,
                         probe: probe)
     }
 
@@ -48,19 +51,24 @@ public struct NetworkScanner: AsyncSequence {
         fileprivate init(interfaceFilter: @escaping (NetworkInterface) -> Bool,
                          oneFullScanOnly: Bool,
                          reportTimeouts: Bool,
+                         concurrencyLimit: Int?,
                          probe: @escaping (String) async throws -> Bool) {
             self.overarchingTask = Task { [channel] in
                 do {
+                    // max(1, …) to ensure that there's always at least one task that can run at a time, so as to make forward progress.
+                    var taskTokens = Swift.max(1, concurrencyLimit ?? Int.max)
+
                     try await withThrowingTaskGroup(of: Void.self) { taskGroup in
                         if oneFullScanOnly {
                             for interface in try NetworkInterface.all {
                                 guard !Task.isCancelled else { break }
 
-                                NetworkScanner.Iterator.scan(interface: interface,
-                                                             interfaceFilter: interfaceFilter,
-                                                             probe: probe,
-                                                             channel: channel,
-                                                             taskGroup: &taskGroup)
+                                try await NetworkScanner.Iterator.scan(interface: interface,
+                                                                       interfaceFilter: interfaceFilter,
+                                                                       probe: probe,
+                                                                       channel: channel,
+                                                                       taskGroup: &taskGroup,
+                                                                       taskTokens: &taskTokens)
                             }
                         } else {
                             for try await change in NetworkInterface.changes() {
@@ -72,11 +80,12 @@ public struct NetworkScanner: AsyncSequence {
                                         fallthrough
                                     }
                                 case .added:
-                                    NetworkScanner.Iterator.scan(interface: change.interface,
-                                                                 interfaceFilter: interfaceFilter,
-                                                                 probe: probe,
-                                                                 channel: channel,
-                                                                 taskGroup: &taskGroup)
+                                    try await NetworkScanner.Iterator.scan(interface: change.interface,
+                                                                           interfaceFilter: interfaceFilter,
+                                                                           probe: probe,
+                                                                           channel: channel,
+                                                                           taskGroup: &taskGroup,
+                                                                           taskTokens: &taskTokens)
                                 default:
                                     break
                                 }
@@ -113,7 +122,8 @@ public struct NetworkScanner: AsyncSequence {
                                  interfaceFilter: (NetworkInterface) -> Bool,
                                  probe: @escaping (String) async throws -> Bool,
                                  channel: AsyncThrowingChannel<Result, Error>,
-                                 taskGroup: inout ThrowingTaskGroup<Void, Error>) {
+                                 taskGroup: inout ThrowingTaskGroup<Void, Error>,
+                                 taskTokens: inout Int) async throws {
             guard let genericAddress = interface.address,
                   let genericNetmask = interface.netmask,
                   interface.up,
@@ -142,6 +152,12 @@ public struct NetworkScanner: AsyncSequence {
                     let addressString = NetworkAddress.IPv4View(addressInHostOrder: candidate).description
 
                     print("\tScanning \(addressString)…")
+
+                    if 0 >= taskTokens {
+                        try await taskGroup.next()
+                    } else {
+                        taskTokens -= 1
+                    }
 
                     _ = taskGroup.addTaskUnlessCancelled { [probe, channel] in
                         if try await probe(addressString) {
