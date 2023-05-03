@@ -275,7 +275,7 @@ public struct NetworkScanner: AsyncSequence {
 
             for candidate in startAddress..<lastAddress {
                 guard !Task.isCancelled else {
-                    log.info("Scanning cancelled for \(startAddress) to \(lastAddress) (at \(candidate)).")
+                    log.info("Scanning cancelled for \(NetworkAddress.IPv4View(addressInHostOrder: startAddress)) to \(NetworkAddress.IPv4View(addressInHostOrder: lastAddress)) (at \(candidate)).")
                     return
                 }
 
@@ -305,7 +305,7 @@ public struct NetworkScanner: AsyncSequence {
                 }
             }
 
-            log.info("Scanning completed for \(startAddress) to \(lastAddress).")
+            log.info("Scanning completed for \(NetworkAddress.IPv4View(addressInHostOrder: startAddress)) to \(NetworkAddress.IPv4View(addressInHostOrder: lastAddress)).")
         }
 
         public func next() async throws -> Result? {
