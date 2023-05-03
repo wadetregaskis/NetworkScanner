@@ -9,10 +9,6 @@ public struct NetworkScannerDemo {
 
         var resultCount = 0
 
-        // Doesn't do anything.  URLSession bug?
-        //URLSession.shared.configuration.timeoutIntervalForRequest = 5
-        //URLSession.shared.configuration.timeoutIntervalForResource = 1
-
         // e.g. Google: 0x8efb2000, 142.251.32.0
         //      Facebook: 0x9df01600, 157.240.22.0
         for try await result in NetworkScanner(networkAddress: NetworkAddress.IPv4View(addressInHostOrder: 0x9df00000),
