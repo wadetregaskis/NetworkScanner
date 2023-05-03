@@ -1,5 +1,4 @@
 import AsyncAlgorithms
-import Darwin // For usleep().
 import Logging
 import NetworkInterfaceInfo
 import NetworkInterfaceChangeMonitoring
@@ -226,8 +225,6 @@ public struct NetworkScanner: AsyncSequence {
                         }
                     }
                 }
-
-                usleep(10000)
             }
 
             log.info("Scanning completed for \(interface).")
