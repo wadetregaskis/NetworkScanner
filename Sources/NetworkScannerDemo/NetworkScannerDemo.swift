@@ -1,4 +1,5 @@
 import Foundation
+import NetworkInterfaceInfo
 import NetworkScanner
 
 @main
@@ -12,9 +13,13 @@ public struct NetworkScannerDemo {
         //URLSession.shared.configuration.timeoutIntervalForRequest = 5
         //URLSession.shared.configuration.timeoutIntervalForResource = 1
 
-        for try await result in NetworkScanner(oneFullScanOnly: true,
-                                               reportMisses: true,
-                                               concurrencyLimit: 5,
+        // e.g. Google: 0x8efb2000, 142.251.32.0
+        //      Facebook: 0x9df01600, 157.240.22.0
+        for try await result in NetworkScanner(networkAddress: NetworkAddress.IPv4View(addressInHostOrder: 0x9df00000),
+                                               netmask: NetworkAddress.IPv4View(addressInHostOrder: 0xffff0000),
+                                               //oneFullScanOnly: true,
+                                               //reportMisses: true,
+                                               concurrencyLimit: 250,
                                                probe: probeHTTPS) {
             resultCount += 1
             print("#\(resultCount): \(result)")
