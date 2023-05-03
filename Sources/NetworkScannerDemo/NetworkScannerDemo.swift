@@ -105,7 +105,8 @@ func probeHTTPS(address: String) async throws -> Bool {
             URLError.cannotConnectToHost,
             URLError.cannotParseResponse,
             URLError.networkConnectionLost,
-            URLError.timedOut {
+            URLError.timedOut,
+            URLError.secureConnectionFailed {
         print("Couldn't connect to \(address).")
         return false
     }
