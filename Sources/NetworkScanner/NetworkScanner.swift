@@ -5,6 +5,7 @@ import NetworkInterfaceInfo
 import NetworkInterfaceChangeMonitoring
 
 
+/// Scans the available networks for hosts that pass a given probe.
 public struct NetworkScanner: AsyncSequence {
     private let interfaceFilter: (NetworkInterface) -> Bool
     private let oneFullScanOnly: Bool
@@ -13,6 +14,35 @@ public struct NetworkScanner: AsyncSequence {
     private let log: Logger?
     private let probe: (String) async throws -> Bool
 
+    /// - Parameters:
+    ///   - interfaceFilter: An optional filter to determine which network interfaces are scanned.
+    ///
+    ///     Note that some interfaces will be ignored irrespective of what this filter is (and this filter won't even be asked about them), because they intrinsically cannot be scanned or ``NetworkScanner`` doesn't currently support them.  This includes those that don't have addresses & netmasks, or aren't a supported interface type (e.g. non-IP interfaces).
+    ///
+    ///     If unspecified, all non-loopback interfaces are scanned (within the constraints noted above).
+    ///   - oneFullScanOnly: Scan just once or scan perpetually.
+    ///
+    ///     Irrespective of the value of this parameter, the scan starts with all currently active interfaces.  Once that is complete, this parameter determines if scanning ends (`true`) or perpetually monitors for network changes and performs additional scans where appropriate.
+    ///
+    ///     If this argument is `false` - which is the default - then iterations over the scanner's results will never naturally end.  Iteration can only be ended by cancelling scanning (e.g. simply breaking out of the `for try await result in NetworkScanner(…) {` loop) or by an error occurring.
+    ///   - reportMisses: Whether to report misses or just silently omit them.
+    ///
+    ///     This is mostly for the convenience of the user - by pre-filtering out misses, which many use-cases don't care about - but also potentially a performance booster - scanner tasks will conclude faster and not be subject to any consumption back-ups by the user.
+    ///
+    ///     It is always better to set this to `false` (or leave it at that default) if you don't care about misses, than filter them out manually.
+    ///   - concurrencyLimit: How many hosts to probe at a time.
+    ///
+    ///     This can & should be used to limit concurrency to reasonable levels when your probes might take a non-trivial amount of time.  This is almost always the case, and the real question is just what specific limit is appropriate for each use-case.  That often depends on the maximum time required for a probe (usually a timeout your probe closure enforces).  e.g. if your probe closure ensures a ten second timeout, then a concurrency limit of 100 means at least 10 hosts probed per second.  Thus you should tune both your timeout and this concurrency limit in concert, to achieve an acceptable average probe rate.
+    ///
+    ///     A too-low value will cause scanning to take longer than necessary.
+    ///
+    ///     A too-high value can cause scanning to fail due for any of various reasons, such as application or OS resource exhaustion (e.g. memory, or file descriptors), or even defensive reactions from networking equipment (e.g. treating this host as abusive and throttling or blocking its traffic).  It can also cause false negatives due to network congestion.  Ironically, it can even reduce scanning speed by causing too much overhead in handling many concurrent probes (although on most systems this requires extraordinarily high concurrency).
+    ///
+    ///     By default there is _no concurrency limit_, which is usually fine if the available networks are small (e.g. class D networks, such as the typical 192.168.0.0) but can very easily become problematic if the available networks happen to be larger.
+    ///   - logger: The logger to use for [mostly] debugging output.  If `nil` (the default) a unique logger is created internally for each iterator.
+    ///   - probe: The test to run against each host, to determine if it is a "hit" or "miss".
+    ///
+    ///     The test can be practically anything you wish - e.g. a simple TCP connection attempt, a HTTPS attempt, a HTTPS POST and interrogation of the response, etc.
     public init(interfaceFilter: @escaping (NetworkInterface) -> Bool = { !$0.loopback },
                 oneFullScanOnly: Bool = false,
                 reportMisses: Bool = false,
@@ -27,14 +57,23 @@ public struct NetworkScanner: AsyncSequence {
         self.probe = probe
     }
 
+    /// The result of a probe attempt.
     public struct Result: Sendable {
+        /// The address that was probed, e.g. "192.168.0.123".
         public let address: String
 
+        /// How a probe attempt concluded.
+        ///
+        /// Note that if the probe closure throws an exception, that is not represented by this enum - it is instead propagated back to the iterator of the ``NetworkScanner`` (as a real, thrown exception).
         public enum Conclusion: Sendable {
+            /// The probe succeeded (returned `true`).
             case hit
+
+            /// The probe returned `false`.
             case miss
         }
 
+        /// The conclusion of the probe attempt.
         public let conclusion: Conclusion
     }
 
