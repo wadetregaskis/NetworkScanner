@@ -1,5 +1,5 @@
 import AsyncAlgorithms
-import os
+import Darwin // For usleep().
 import NetworkInterfaceInfo
 import NetworkInterfaceChangeMonitoring
 
@@ -42,79 +42,54 @@ public struct NetworkScanner: AsyncSequence {
     }
 
     public final class Iterator: AsyncIteratorProtocol {
-        private let interfaceFilter: (NetworkInterface) -> Bool
-        private let reportTimeouts: Bool
-        private let probe: (String) async throws -> Bool
-
         private var overarchingTask: Task<Void, Error>? = nil
         private let channel = AsyncThrowingChannel<Result, Error>()
-
-        private enum TaskGroupResult: Sendable {
-            case networkChange(NetworkInterface.Change)
-            case probeResult(Result?)
-        }
 
         fileprivate init(interfaceFilter: @escaping (NetworkInterface) -> Bool,
                          oneFullScanOnly: Bool,
                          reportTimeouts: Bool,
                          probe: @escaping (String) async throws -> Bool) {
-            self.interfaceFilter = interfaceFilter
-            self.reportTimeouts = reportTimeouts
-            self.probe = probe
-
-            self.overarchingTask = Task { [oneFullScanOnly, channel] in
+            self.overarchingTask = Task { [channel] in
                 do {
-                    try await withThrowingTaskGroup(of: Result?.self) { taskGroup in
+                    try await withThrowingTaskGroup(of: Void.self) { taskGroup in
                         if oneFullScanOnly {
                             for interface in try NetworkInterface.all {
                                 guard !Task.isCancelled else { break }
 
-                                scan(interface: interface, taskGroup: &taskGroup)
-                            }
-
-                            for try await result in taskGroup {
-                                guard !Task.isCancelled else {
-                                    print("Cancelled.")
-                                    taskGroup.cancelAll()
-                                    break
-                                }
-
-                                print("Got result: \(result)")
-
-                                if let result {
-                                    await channel.send(result)
-                                }
+                                NetworkScanner.Iterator.scan(interface: interface,
+                                                             interfaceFilter: interfaceFilter,
+                                                             probe: probe,
+                                                             channel: channel,
+                                                             taskGroup: &taskGroup)
                             }
                         } else {
-                            for try await result in merge(taskGroup.map { TaskGroupResult.probeResult($0) },
-                                                          NetworkInterface.changes().map { TaskGroupResult.networkChange($0) }) {
-                                guard !Task.isCancelled else {
-                                    print("Cancelled.")
-                                    taskGroup.cancelAll()
+                            for try await change in NetworkInterface.changes() {
+                                guard !Task.isCancelled else { break }
+
+                                switch change.nature {
+                                case .modified(let nature):
+                                    if nature.contains(.address) || nature.contains(.netmask) {
+                                        fallthrough
+                                    }
+                                case .added:
+                                    NetworkScanner.Iterator.scan(interface: change.interface,
+                                                                 interfaceFilter: interfaceFilter,
+                                                                 probe: probe,
+                                                                 channel: channel,
+                                                                 taskGroup: &taskGroup)
+                                default:
                                     break
                                 }
+                            }
+                        }
 
-                                switch result {
-                                case .networkChange(let change):
-                                    print("Network change: \(change)")
+                        print("Collating results…")
 
-                                    switch change.nature {
-                                    case .added:
-                                        scan(interface: change.interface, taskGroup: &taskGroup)
-                                    case .modified(let nature):
-                                        if nature.contains(.address) || nature.contains(.netmask) {
-                                            scan(interface: change.interface, taskGroup: &taskGroup)
-                                        }
-                                    default:
-                                        break
-                                    }
-                                case .probeResult(let result):
-                                    print("Got result: \(result)")
-
-                                    if let result {
-                                        await channel.send(result)
-                                    }
-                                }
+                        for try await _ in taskGroup {
+                            guard !Task.isCancelled else {
+                                print("Cancelled.")
+                                taskGroup.cancelAll()
+                                break
                             }
                         }
 
@@ -134,7 +109,11 @@ public struct NetworkScanner: AsyncSequence {
 
         private static let supportedAddressFamilies = Set<NetworkAddress.AddressFamily>(arrayLiteral: .inet) // TODO: Support IPv6 too.
 
-        private func scan(interface: NetworkInterface, taskGroup: inout ThrowingTaskGroup<Result?, Error>) {
+        private static func scan(interface: NetworkInterface,
+                                 interfaceFilter: (NetworkInterface) -> Bool,
+                                 probe: @escaping (String) async throws -> Bool,
+                                 channel: AsyncThrowingChannel<Result, Error>,
+                                 taskGroup: inout ThrowingTaskGroup<Void, Error>) {
             guard let genericAddress = interface.address,
                   let genericNetmask = interface.netmask,
                   interface.up,
@@ -155,6 +134,7 @@ public struct NetworkScanner: AsyncSequence {
 
             for candidate in networkAddress..<(networkAddress | ~v4Netmask.address) {
                 guard !Task.isCancelled else {
+                    print("Scanning cancelled.")
                     return
                 }
 
@@ -163,17 +143,20 @@ public struct NetworkScanner: AsyncSequence {
 
                     print("\tScanning \(addressString)…")
 
-                    _ = taskGroup.addTaskUnlessCancelled { [probe] in
+                    _ = taskGroup.addTaskUnlessCancelled { [probe, channel] in
                         if try await probe(addressString) {
                             print("\t\tReturning hit for \(addressString).")
-                            return Result(address: addressString, conclusion: .hit)
+                            await channel.send(Result(address: addressString, conclusion: .hit))
                         } else {
                             print("\t\tReturning miss for \(addressString).")
-                            return nil
                         }
                     }
                 }
+
+                usleep(10000)
             }
+
+            print("Scanning completed.")
         }
 
         public func next() async throws -> Result? {
