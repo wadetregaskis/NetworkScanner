@@ -64,6 +64,13 @@ let session = {
     //s.configuration.timeoutIntervalForRequest = 5
     //s.configuration.timeoutIntervalForResource = 1
     s.configuration.waitsForConnectivity = false
+    s.configuration.urlCache = nil
+    s.configuration.urlCredentialStorage = nil
+    s.configuration.httpShouldSetCookies = false
+    s.configuration.httpCookieStorage = nil
+    s.configuration.httpCookieAcceptPolicy = .never
+    s.configuration.httpMaximumConnectionsPerHost = 1
+    s.configuration.httpShouldUsePipelining = false
 
     return s
 }()
