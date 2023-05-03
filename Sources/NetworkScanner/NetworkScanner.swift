@@ -94,7 +94,7 @@ public struct NetworkScanner: AsyncSequence {
                             }
                         }
 
-                        print("Collating results…")
+                        print("Wrapping up results…")
 
                         for try await _ in taskGroup {
                             guard !Task.isCancelled else {
