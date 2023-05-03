@@ -1,5 +1,6 @@
 import AsyncAlgorithms
 import Darwin // For usleep().
+import Logging
 import NetworkInterfaceInfo
 import NetworkInterfaceChangeMonitoring
 
@@ -9,17 +10,20 @@ public struct NetworkScanner: AsyncSequence {
     private let oneFullScanOnly: Bool
     private let reportMisses: Bool
     private let concurrencyLimit: Int?
+    private let log: Logger?
     private let probe: (String) async throws -> Bool
 
     public init(interfaceFilter: @escaping (NetworkInterface) -> Bool = { !$0.loopback },
                 oneFullScanOnly: Bool = false,
                 reportMisses: Bool = false,
                 concurrencyLimit: Int? = nil,
+                logger: Logger? = nil,
                 probe: @escaping (String) async throws -> Bool) {
         self.interfaceFilter = interfaceFilter
         self.oneFullScanOnly = oneFullScanOnly
         self.reportMisses = reportMisses
         self.concurrencyLimit = concurrencyLimit
+        self.log = logger
         self.probe = probe
     }
 
@@ -41,6 +45,7 @@ public struct NetworkScanner: AsyncSequence {
                         oneFullScanOnly: oneFullScanOnly,
                         reportMisses: reportMisses,
                         concurrencyLimit: concurrencyLimit,
+                        log: log,
                         probe: probe)
     }
 
@@ -52,7 +57,10 @@ public struct NetworkScanner: AsyncSequence {
                          oneFullScanOnly: Bool,
                          reportMisses: Bool,
                          concurrencyLimit: Int?,
+                         log: Logger?,
                          probe: @escaping (String) async throws -> Bool) {
+            let log = log ?? Logger(label: "NetworkScanner.Iterator[\(Unmanaged.passUnretained(self).toOpaque())]")
+
             self.overarchingTask = Task { [channel] in
                 do {
                     try await withThrowingTaskGroup(of: Void.self) { taskGroup in
@@ -69,7 +77,8 @@ public struct NetworkScanner: AsyncSequence {
                                                                        probe: probe,
                                                                        channel: channel,
                                                                        taskGroup: &taskGroup,
-                                                                       taskTokens: &taskTokens)
+                                                                       taskTokens: &taskTokens,
+                                                                       log: log)
                             }
                         } else {
                             for try await change in NetworkInterface.changes() {
@@ -87,28 +96,30 @@ public struct NetworkScanner: AsyncSequence {
                                                                            probe: probe,
                                                                            channel: channel,
                                                                            taskGroup: &taskGroup,
-                                                                           taskTokens: &taskTokens)
+                                                                           taskTokens: &taskTokens,
+                                                                           log: log)
                                 default:
                                     break
                                 }
                             }
                         }
 
-                        print("Wrapping up results…")
+                        log.info("Wrapping up results…")
 
                         for try await _ in taskGroup {
                             guard !Task.isCancelled else {
-                                print("Cancelled.")
+                                log.info("Cancelled.")
                                 taskGroup.cancelAll()
                                 break
                             }
                         }
 
-                        print("No more results.")
+                        log.info("No more results.")
                     }
 
                     channel.finish()
                 } catch {
+                    log.info("Scanning failed with error:\n\(error)")
                     channel.fail(error)
                 }
             }
@@ -126,7 +137,8 @@ public struct NetworkScanner: AsyncSequence {
                                  probe: @escaping (String) async throws -> Bool,
                                  channel: AsyncThrowingChannel<Result, Error>,
                                  taskGroup: inout ThrowingTaskGroup<Void, Error>,
-                                 taskTokens: inout Int) async throws {
+                                 taskTokens: inout Int,
+                                 log: Logger) async throws {
             guard let genericAddress = interface.address,
                   let genericNetmask = interface.netmask,
                   interface.up,
@@ -136,7 +148,7 @@ public struct NetworkScanner: AsyncSequence {
                 return
             }
 
-            print("Scanning \(interface)…")
+            log.info("Scanning \(interface)…")
 
             guard let v4Address = genericAddress.IPv4,
                   let v4Netmask = genericNetmask.IPv4 else {
@@ -147,14 +159,14 @@ public struct NetworkScanner: AsyncSequence {
 
             for candidate in networkAddress..<(networkAddress | ~v4Netmask.address) {
                 guard !Task.isCancelled else {
-                    print("Scanning cancelled.")
+                    log.info("Scanning cancelled for \(interface).")
                     return
                 }
 
                 if candidate != networkAddress && candidate != v4Address.address {
                     let addressString = NetworkAddress.IPv4View(addressInHostOrder: candidate).description
 
-                    print("\tScanning \(addressString)…")
+                    log.info("\tScanning \(addressString)…")
 
                     if 0 >= taskTokens {
                         try await taskGroup.next()
@@ -164,10 +176,10 @@ public struct NetworkScanner: AsyncSequence {
 
                     _ = taskGroup.addTaskUnlessCancelled { [probe, channel] in
                         if try await probe(addressString) {
-                            print("\t\tReturning hit for \(addressString).")
+                            log.info("\t\tReturning hit for \(addressString).")
                             await channel.send(Result(address: addressString, conclusion: .hit))
                         } else {
-                            print("\t\tReturning miss for \(addressString).")
+                            log.debug("\t\tReturning miss for \(addressString).")
 
                             if reportMisses {
                                 await channel.send(Result(address: addressString, conclusion: .miss))
@@ -179,7 +191,7 @@ public struct NetworkScanner: AsyncSequence {
                 usleep(10000)
             }
 
-            print("Scanning completed.")
+            log.info("Scanning completed for \(interface).")
         }
 
         public func next() async throws -> Result? {
