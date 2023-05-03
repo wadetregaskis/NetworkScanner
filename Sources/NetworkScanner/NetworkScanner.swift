@@ -191,3 +191,20 @@ public struct NetworkScanner: AsyncSequence {
         }
     }
 }
+
+extension NetworkScanner.Result: CustomStringConvertible {
+    public var description: String {
+        "\(conclusion): \(address)"
+    }
+}
+
+extension NetworkScanner.Result.Conclusion: CustomStringConvertible {
+    public var description: String {
+        switch self {
+        case .hit:
+            return "Hit"
+        case .miss:
+            return "Miss"
+        }
+    }
+}
