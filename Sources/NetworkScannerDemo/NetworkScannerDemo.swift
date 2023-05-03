@@ -13,7 +13,7 @@ public struct NetworkScannerDemo {
             resultCount += 1
             print("#\(resultCount): \(result)")
 
-            if resultCount > 10 {
+            if resultCount >= 10 {
                 break
             }
         }
