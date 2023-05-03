@@ -1,11 +1,11 @@
 import XCTest
-@testable import Network_Scanner
+@testable import NetworkScanner
 
-final class Network_ScannerTests: XCTestCase {
+final class NetworkScannerTests: XCTestCase {
     func testExample() throws {
         // This is an example of a functional test case.
         // Use XCTAssert and related functions to verify your tests produce the correct
         // results.
-        XCTAssertEqual(Network_Scanner().text, "Hello, World!")
+        XCTAssertEqual(NetworkScanner().text, "Hello, World!")
     }
 }
