@@ -192,11 +192,17 @@ public struct NetworkScanner: AsyncSequence {
     }
 }
 
+extension NetworkScanner.Result: Equatable {}
+extension NetworkScanner.Result: Hashable {}
+
 extension NetworkScanner.Result: CustomStringConvertible {
     public var description: String {
         "\(conclusion): \(address)"
     }
 }
+
+extension NetworkScanner.Result.Conclusion: Equatable {}
+extension NetworkScanner.Result.Conclusion: Hashable {}
 
 extension NetworkScanner.Result.Conclusion: CustomStringConvertible {
     public var description: String {
