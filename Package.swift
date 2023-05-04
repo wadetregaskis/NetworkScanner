@@ -5,7 +5,11 @@ import PackageDescription
 let package = Package(
     name: "NetworkScanner",
     platforms: [
-        .macOS(.v13),
+        .iOS(.v15),
+        .macOS(.v12),
+        .macCatalyst(.v15),
+        .tvOS(.v15),
+        .watchOS(.v8)
     ],
     products: [
         .library(
