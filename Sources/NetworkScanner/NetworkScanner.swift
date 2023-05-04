@@ -277,7 +277,7 @@ public struct NetworkScanner<HitData: Sendable, MissData: Sendable>: AsyncSequen
             let startAddress = netmask.address & networkAddress.address
             let lastAddress = startAddress | ~netmask.address
 
-            log.info("Scanning \(IPv4Address(addressInHostOrder: startAddress)) to \(IPv4Address(addressInHostOrder: lastAddress)) (about \(lastAddress - startAddress) addresses)…")
+            log.info("Scanning \(IPv4Address(addressInHostOrder: startAddress)) to \(IPv4Address(addressInHostOrder: lastAddress)) (about \((lastAddress - startAddress).formatted()) addresses)…")
 
             for candidate in startAddress..<lastAddress {
                 guard !Task.isCancelled, !taskGroup.isCancelled else {

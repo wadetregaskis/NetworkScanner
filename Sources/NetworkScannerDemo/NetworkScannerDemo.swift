@@ -21,7 +21,7 @@ public struct NetworkScannerDemo {
                                                concurrencyLimit: 250,
                                                probe: probeHTTPS) {
             resultCount += 1
-            print("#\(resultCount): \(result)")
+            print("#\(resultCount.formatted()): \(result)")
 
             // Useful to uncomment if you're running this a lot and don't actually want to "DoS" Facebook all the time. 😝
 //            if resultCount >= 10 {
@@ -29,7 +29,7 @@ public struct NetworkScannerDemo {
 //            }
         }
 
-        print("\(resultCount) result(s) in total.")
+        print("\(resultCount.formatted()) result(s) in total.")
     }
 }
 
