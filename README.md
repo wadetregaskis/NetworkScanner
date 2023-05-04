@@ -21,7 +21,7 @@ let scanner = NetworkScanner(concurrencyLimit: 250) { address in
     }
     
     do {
-        _ = try await session.data(for: request, delegate: delegate)
+        _ = try await session.data(from: URL)
         return true
     } catch {
         return false
