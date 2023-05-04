@@ -140,7 +140,15 @@ public struct NetworkScanner<HitData: Sendable, MissData: Sendable>: AsyncSequen
                          concurrencyLimit: Int?,
                          log: Logger?,
                          probe: @escaping (String) async throws -> Result.Conclusion) {
-            let log = log ?? Logger(label: "NetworkScanner.Iterator[\(Unmanaged.passUnretained(self).toOpaque())]")
+            let labelConstructor = {
+                let missVoid = Void.self != MissData.self
+                let anyVoid = Void.self != HitData.self || missVoid
+                let myAddress = Unmanaged.passUnretained(self).toOpaque()
+
+                return "NetworkScanner\(anyVoid ? "<\(HitData.self)\(missVoid ? ", \(MissData.self)" : "")>" : "").Iterator[\(myAddress)]"
+            }
+
+            let log = log ?? Logger(label: labelConstructor())
 
             self.overarchingTask = Task { [channel] in
                 do {
