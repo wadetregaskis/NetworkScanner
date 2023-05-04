@@ -30,7 +30,7 @@ public struct NetworkScannerDemo {
 }
 
 func probeFake(address: String) async throws -> Bool {
-    try await Task.sleep(for: .milliseconds(Int.random(in: 250...2500)))
+    try await Task.sleep(nanoseconds: .random(in: 250_000...2_500_000))
     return Bool.random()
 }
 
