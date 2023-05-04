@@ -280,7 +280,7 @@ public struct NetworkScanner<HitData: Sendable, MissData: Sendable>: AsyncSequen
                 if candidate != startAddress && candidate != networkAddress.address {
                     let addressString = IPv4Address(addressInHostOrder: candidate).description
 
-                    log.info("\tScanning \(addressString)…")
+                    log.debug("\tScanning \(addressString)…")
 
                     if 0 >= taskTokens {
                         try await taskGroup.next()
