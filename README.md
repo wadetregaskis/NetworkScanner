@@ -29,7 +29,7 @@ let scanner = NetworkScanner(concurrencyLimit: 250) { address in
 }
 
 for try await result in scanner {
-    print(\(result)) // e.g. "Hit: 192.168.0.10"
+    print(result) // e.g. "Hit: 192.168.0.10"
 }
 
 enum Errors: Error {
