@@ -11,8 +11,8 @@ public struct NetworkScanner: AsyncSequence {
     fileprivate enum Mode {
         case localNetworks(interfaceFilter: (NetworkInterface) -> Bool,
                            oneFullScanOnly: Bool)
-        case arbitraryNetwork(address: NetworkAddress.IPv4View,
-                              netmask: NetworkAddress.IPv4View)
+        case arbitraryNetwork(address: IPv4Address,
+                              netmask: IPv4Address)
     }
 
     private let mode: Mode
@@ -88,8 +88,8 @@ public struct NetworkScanner: AsyncSequence {
     ///   - probe: The test to run against each host, to determine if it is a "hit" or "miss".
     ///
     ///     The test can be practically anything you wish - e.g. a simple TCP connection attempt, a HTTPS attempt, a HTTPS POST and interrogation of the response, etc.
-    public init(networkAddress: NetworkAddress.IPv4View,
-                netmask: NetworkAddress.IPv4View,
+    public init(networkAddress: IPv4Address,
+                netmask: IPv4Address,
                 reportMisses: Bool = false,
                 concurrencyLimit: Int? = nil,
                 logger: Logger? = nil,
@@ -260,8 +260,8 @@ public struct NetworkScanner: AsyncSequence {
             log.info("Scanning completed for \(interface).")
         }
 
-        private static func scan(networkAddress: NetworkAddress.IPv4View,
-                                 netmask: NetworkAddress.IPv4View,
+        private static func scan(networkAddress: IPv4Address,
+                                 netmask: IPv4Address,
                                  reportMisses: Bool,
                                  probe: @escaping (String) async throws -> Bool,
                                  channel: AsyncThrowingChannel<Result, Error>,
@@ -271,16 +271,16 @@ public struct NetworkScanner: AsyncSequence {
             let startAddress = netmask.address & networkAddress.address
             let lastAddress = startAddress | ~netmask.address
 
-            log.info("Scanning \(NetworkAddress.IPv4View(addressInHostOrder: startAddress)) to \(NetworkAddress.IPv4View(addressInHostOrder: lastAddress)) (about \(lastAddress - startAddress) addresses)…")
+            log.info("Scanning \(IPv4Address(addressInHostOrder: startAddress)) to \(IPv4Address(addressInHostOrder: lastAddress)) (about \(lastAddress - startAddress) addresses)…")
 
             for candidate in startAddress..<lastAddress {
                 guard !Task.isCancelled, !taskGroup.isCancelled else {
-                    log.info("Scanning cancelled for \(NetworkAddress.IPv4View(addressInHostOrder: startAddress)) to \(NetworkAddress.IPv4View(addressInHostOrder: lastAddress)) (at \(candidate)).")
+                    log.info("Scanning cancelled for \(IPv4Address(addressInHostOrder: startAddress)) to \(IPv4Address(addressInHostOrder: lastAddress)) (at \(candidate)).")
                     return
                 }
 
                 if candidate != startAddress && candidate != networkAddress.address {
-                    let addressString = NetworkAddress.IPv4View(addressInHostOrder: candidate).description
+                    let addressString = IPv4Address(addressInHostOrder: candidate).description
 
                     log.info("\tScanning \(addressString)…")
 
@@ -305,7 +305,7 @@ public struct NetworkScanner: AsyncSequence {
                 }
             }
 
-            log.info("Scanning completed for \(NetworkAddress.IPv4View(addressInHostOrder: startAddress)) to \(NetworkAddress.IPv4View(addressInHostOrder: lastAddress)).")
+            log.info("Scanning completed for \(IPv4Address(addressInHostOrder: startAddress)) to \(IPv4Address(addressInHostOrder: lastAddress)).")
         }
 
         public func next() async throws -> Result? {

@@ -12,10 +12,10 @@ public struct NetworkScannerDemo {
 
         var resultCount = 0
 
-        // e.g. Google: 0x8efb2000, 142.251.32.0
-        //      Facebook: 0x9df01600, 157.240.22.0
-        for try await result in NetworkScanner(networkAddress: NetworkAddress.IPv4View(addressInHostOrder: 0x9df00000),
-                                               netmask: NetworkAddress.IPv4View(addressInHostOrder: 0xffff0000),
+        // e.g. Google: 142.251.32.0
+        //      Facebook: 157.240.22.0
+        for try await result in NetworkScanner(networkAddress: IPv4Address(from: "157.240.0.0")!,
+                                               netmask: IPv4Address(from: "255.255.0.0")!,
                                                //oneFullScanOnly: true,
                                                //reportMisses: true,
                                                concurrencyLimit: 250,
