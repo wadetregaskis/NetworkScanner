@@ -357,7 +357,7 @@ extension NetworkScanner.Result.Conclusion: CustomStringConvertible {
     }
 }
 
-// Unfortunately even if you don't have any additional data to return with hits and/or misses, by default Swift [4 onwards] still makes you provide an associated 'value' explicitly, like `.hit(())`.  These special-casing extensions are to work around that.  Kudos to Geoff Hackworth (https://stackoverflow.com/users/870671/geoff-hackworth) for figuring this out (https://stackoverflow.com/a/76175910/790079), with help from Martin R (https://stackoverflow.com/users/1187415/martin-r) and Hamish (https://stackoverflow.com/users/2976878/hamish) re. https://stackoverflow.com/a/46863180/790079.
+// Unfortunately even if you don't have any additional data to return with hits and/or misses, by default Swift [4 onwards] still makes you provide an associated 'value' explicitly, like `.hit(())`.  These two special-casing extensions are to work around that.  Kudos to Geoff Hackworth (https://stackoverflow.com/users/870671/geoff-hackworth) for figuring this out (https://stackoverflow.com/a/76175910/790079), with help from Martin R (https://stackoverflow.com/users/1187415/martin-r) and Hamish (https://stackoverflow.com/users/2976878/hamish) re. https://stackoverflow.com/a/46863180/790079.
 extension NetworkScanner.Result.Conclusion where HitData == Void {
     public static var hit: Self {
         .hit(())
@@ -367,5 +367,11 @@ extension NetworkScanner.Result.Conclusion where HitData == Void {
 extension NetworkScanner.Result.Conclusion where MissData == Void {
     public static var miss: Self {
         .miss(())
+    }
+}
+
+extension NetworkScanner.Result.Conclusion: CaseIterable where HitData == Void, MissData == Void {
+    public static var allCases: [NetworkScanner<(), ()>.Result.Conclusion] {
+        [.hit, .miss]
     }
 }
