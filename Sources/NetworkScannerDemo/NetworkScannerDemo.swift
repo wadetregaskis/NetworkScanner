@@ -23,9 +23,10 @@ public struct NetworkScannerDemo {
             resultCount += 1
             print("#\(resultCount): \(result)")
 
-            if resultCount >= 10 {
-                break
-            }
+            // Useful to uncomment if you're running this a lot and don't actually want to "DoS" Facebook all the time. 😝
+//            if resultCount >= 10 {
+//                break
+//            }
         }
 
         print("\(resultCount) result(s) in total.")
