@@ -274,7 +274,7 @@ public struct NetworkScanner: AsyncSequence {
             log.info("Scanning \(NetworkAddress.IPv4View(addressInHostOrder: startAddress)) to \(NetworkAddress.IPv4View(addressInHostOrder: lastAddress)) (about \(lastAddress - startAddress) addresses)…")
 
             for candidate in startAddress..<lastAddress {
-                guard !Task.isCancelled else {
+                guard !Task.isCancelled, !taskGroup.isCancelled else {
                     log.info("Scanning cancelled for \(NetworkAddress.IPv4View(addressInHostOrder: startAddress)) to \(NetworkAddress.IPv4View(addressInHostOrder: lastAddress)) (at \(candidate)).")
                     return
                 }
