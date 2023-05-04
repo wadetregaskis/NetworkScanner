@@ -36,9 +36,9 @@ public struct NetworkScannerDemo {
 /// An example probe which just waits a short while and randomly returns true or false.
 ///
 /// This is really just for testing purposes - it's obviously not useful in a real application.
-func probeFake(address: String) async throws -> Bool {
+func probeFake(address: String) async throws -> NetworkScanner<Void, Void>.Result.Conclusion {
     try await Task.sleep(nanoseconds: .random(in: 250_000...2_500_000))
-    return Bool.random()
+    return Bool.random() ? .hit : .miss
 }
 
 class Delegate: NSObject, URLSessionDelegate, URLSessionDataDelegate {
@@ -83,7 +83,7 @@ let session = {
 /// It doesn't require them to be fully functional or correctly configured or to even handle HTTP requests successfully.  They just have to be HTTPS servers.
 ///
 /// One grey area is SSL/TLS problems - it's assumed that many kinds of TLS issues, such as invalid server certificates, imply that it is indeed a HTTPS server.  Given the 443 port being used.  But strictly-speaking it's possible that something that's _not_ a HTTPS server could be listening on the HTTPS port and using TLS.  But if so, why?!
-func probeHTTPS(address: String) async throws -> Bool {
+func probeHTTPS(address: String) async throws -> NetworkScanner<HitNature, Error>.Result.Conclusion {
     guard let URL = URL(string: "https://\(address)") else {
         throw Errors.unableToConstructHTTPSURL(address: address)
     }
@@ -98,7 +98,7 @@ func probeHTTPS(address: String) async throws -> Bool {
     do {
         let (bytes, _) = try await session.bytes(for: request, delegate: delegate)
         bytes.task.cancel()
-        return true
+        return .hit(.clean)
     } catch URLError.clientCertificateRequired,
             URLError.clientCertificateRejected,
             URLError.dataLengthExceedsMaximum,
@@ -111,17 +111,24 @@ func probeHTTPS(address: String) async throws -> Bool {
             URLError.userAuthenticationRequired,
             URLError.zeroByteResource {
         print("Unclean hit against \(address).")
-        return true
-    } catch URLError.cannotFindHost,
-            URLError.cannotConnectToHost,
-            URLError.cannotParseResponse,
-            URLError.networkConnectionLost,
-            URLError.timedOut,
-            URLError.secureConnectionFailed {
+        return .hit(.unclean)
+    } catch let error as URLError where missErrorCodes.contains(error.errorCode) {
         print("Couldn't connect to \(address).")
-        return false
+        return .miss(error)
     }
 }
+
+enum HitNature {
+    case clean
+    case unclean
+}
+
+let missErrorCodes: Set = [NSURLErrorCannotFindHost,
+                           NSURLErrorCannotConnectToHost,
+                           NSURLErrorCannotParseResponse,
+                           NSURLErrorNetworkConnectionLost,
+                           NSURLErrorTimedOut,
+                           NSURLErrorSecureConnectionFailed]
 
 enum Errors: Error {
     case unableToConstructHTTPSURL(address: String)

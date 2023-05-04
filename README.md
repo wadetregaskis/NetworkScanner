@@ -22,14 +22,14 @@ let scanner = NetworkScanner(concurrencyLimit: 250) { address in
     
     do {
         _ = try await session.data(from: URL)
-        return true
+        return .hit
     } catch {
-        return false
+        return .miss
     }
 }
 
 for try await result in scanner {
-    print(result) // e.g. "Hit: 192.168.0.10"
+    print(result) // e.g. "192.168.0.10: Hit"
 }
 
 enum Errors: Error {

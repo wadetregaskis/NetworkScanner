@@ -7,7 +7,7 @@ import NetworkInterfaceChangeMonitoring
 /// Scans networks for hosts that pass a given probe.
 ///
 /// Currently only IPv4 networks are supported.
-public struct NetworkScanner: AsyncSequence {
+public struct NetworkScanner<HitData: Sendable, MissData: Sendable>: AsyncSequence {
     fileprivate enum Mode {
         case localNetworks(interfaceFilter: (NetworkInterface) -> Bool,
                            oneFullScanOnly: Bool)
@@ -19,7 +19,7 @@ public struct NetworkScanner: AsyncSequence {
     private let reportMisses: Bool
     private let concurrencyLimit: Int?
     private let log: Logger?
-    private let probe: (String) async throws -> Bool
+    private let probe: (String) async throws -> Result.Conclusion
 
     /// Scans local networks.
     ///
@@ -57,7 +57,7 @@ public struct NetworkScanner: AsyncSequence {
                 reportMisses: Bool = false,
                 concurrencyLimit: Int? = nil,
                 logger: Logger? = nil,
-                probe: @escaping (String) async throws -> Bool) {
+                probe: @escaping (String) async throws -> Result.Conclusion) {
         self.mode = .localNetworks(interfaceFilter: interfaceFilter, oneFullScanOnly: oneFullScanOnly)
         self.reportMisses = reportMisses
         self.concurrencyLimit = concurrencyLimit
@@ -93,7 +93,7 @@ public struct NetworkScanner: AsyncSequence {
                 reportMisses: Bool = false,
                 concurrencyLimit: Int? = nil,
                 logger: Logger? = nil,
-                probe: @escaping (String) async throws -> Bool) {
+                probe: @escaping (String) async throws -> Result.Conclusion) {
         self.mode = .arbitraryNetwork(address: networkAddress, netmask: netmask)
         self.reportMisses = reportMisses
         self.concurrencyLimit = concurrencyLimit
@@ -111,10 +111,10 @@ public struct NetworkScanner: AsyncSequence {
         /// Note that if the probe closure throws an exception, that is not represented by this enum - it is instead propagated back to the iterator of the ``NetworkScanner`` (as a real, thrown exception).
         public enum Conclusion: Sendable {
             /// The probe succeeded (returned `true`).
-            case hit
+            case hit(HitData)
 
             /// The probe returned `false`.
-            case miss
+            case miss(MissData)
         }
 
         /// The conclusion of the probe attempt.
@@ -139,7 +139,7 @@ public struct NetworkScanner: AsyncSequence {
                          reportMisses: Bool,
                          concurrencyLimit: Int?,
                          log: Logger?,
-                         probe: @escaping (String) async throws -> Bool) {
+                         probe: @escaping (String) async throws -> Result.Conclusion) {
             let log = log ?? Logger(label: "NetworkScanner.Iterator[\(Unmanaged.passUnretained(self).toOpaque())]")
 
             self.overarchingTask = Task { [channel] in
@@ -222,12 +222,10 @@ public struct NetworkScanner: AsyncSequence {
             self.overarchingTask?.cancel()
         }
 
-        private static let supportedAddressFamilies = Set<NetworkAddress.AddressFamily>(arrayLiteral: .inet) // TODO: Support IPv6 too.
-
         private static func scan(interface: NetworkInterface,
                                  interfaceFilter: (NetworkInterface) -> Bool,
                                  reportMisses: Bool,
-                                 probe: @escaping (String) async throws -> Bool,
+                                 probe: @escaping (String) async throws -> Result.Conclusion,
                                  channel: AsyncThrowingChannel<Result, Error>,
                                  taskGroup: inout ThrowingTaskGroup<Void, Error>,
                                  taskTokens: inout Int,
@@ -236,7 +234,7 @@ public struct NetworkScanner: AsyncSequence {
                   let genericNetmask = interface.netmask,
                   interface.up,
                   let addressFamily = interface.addressFamily,
-                  Iterator.supportedAddressFamilies.contains(addressFamily),
+                  .inet == addressFamily, // TODO: Support IPv6 too.
                   interfaceFilter(interface) else {
                 return
             }
@@ -263,7 +261,7 @@ public struct NetworkScanner: AsyncSequence {
         private static func scan(networkAddress: IPv4Address,
                                  netmask: IPv4Address,
                                  reportMisses: Bool,
-                                 probe: @escaping (String) async throws -> Bool,
+                                 probe: @escaping (String) async throws -> Result.Conclusion,
                                  channel: AsyncThrowingChannel<Result, Error>,
                                  taskGroup: inout ThrowingTaskGroup<Void, Error>,
                                  taskTokens: inout Int,
@@ -291,16 +289,18 @@ public struct NetworkScanner: AsyncSequence {
                     }
 
                     _ = taskGroup.addTaskUnlessCancelled { [probe, channel] in
-                        if try await probe(addressString) {
+                        let conclusion = try await probe(addressString)
+
+                        switch conclusion {
+                        case .hit:
                             log.info("\t\tReturning hit for \(addressString).")
-                            await channel.send(Result(address: addressString, conclusion: .hit))
-                        } else {
+                        case .miss:
                             log.debug("\t\tReturning miss for \(addressString).")
 
-                            if reportMisses {
-                                await channel.send(Result(address: addressString, conclusion: .miss))
-                            }
+                            guard reportMisses else { return }
                         }
+
+                        await channel.send(Result(address: addressString, conclusion: conclusion))
                     }
                 }
             }
@@ -318,25 +318,46 @@ public struct NetworkScanner: AsyncSequence {
     }
 }
 
-extension NetworkScanner.Result: Equatable {}
-extension NetworkScanner.Result: Hashable {}
+extension NetworkScanner.Result: Equatable where HitData: Equatable, MissData: Equatable {}
+extension NetworkScanner.Result: Hashable where HitData: Hashable, MissData: Hashable {}
 
 extension NetworkScanner.Result: CustomStringConvertible {
     public var description: String {
-        "\(conclusion): \(address)"
+        "\(address): \(conclusion)"
     }
 }
 
-extension NetworkScanner.Result.Conclusion: Equatable {}
-extension NetworkScanner.Result.Conclusion: Hashable {}
+extension NetworkScanner.Result.Conclusion: Equatable where HitData: Equatable, MissData: Equatable {}
+extension NetworkScanner.Result.Conclusion: Hashable where HitData: Hashable, MissData: Hashable {}
 
 extension NetworkScanner.Result.Conclusion: CustomStringConvertible {
     public var description: String {
         switch self {
-        case .hit:
-            return "Hit"
-        case .miss:
-            return "Miss"
+        case .hit(let data):
+            if HitData.self == Void.self {
+                return "Hit"
+            } else {
+                return "Hit (\(data))"
+            }
+        case .miss(let data):
+            if MissData.self == Void.self {
+                return "Miss"
+            } else {
+                return "Miss (\(data))"
+            }
         }
+    }
+}
+
+// Unfortunately even if you don't have any additional data to return with hits and/or misses, by default Swift [4 onwards] still makes you provide an associated 'value' explicitly, like `.hit(())`.  These special-casing extensions are to work around that.  Kudos to Geoff Hackworth (https://stackoverflow.com/users/870671/geoff-hackworth) for figuring this out (https://stackoverflow.com/a/76175910/790079), with help from Martin R (https://stackoverflow.com/users/1187415/martin-r) and Hamish (https://stackoverflow.com/users/2976878/hamish) re. https://stackoverflow.com/a/46863180/790079.
+extension NetworkScanner.Result.Conclusion where HitData == Void {
+    public static var hit: Self {
+        .hit(())
+    }
+}
+
+extension NetworkScanner.Result.Conclusion where MissData == Void {
+    public static var miss: Self {
+        .miss(())
     }
 }
