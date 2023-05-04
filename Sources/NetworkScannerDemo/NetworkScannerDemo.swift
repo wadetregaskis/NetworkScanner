@@ -2,6 +2,9 @@ import Foundation
 import NetworkInterfaceInfo
 import NetworkScanner
 
+/// A simple demo executable.
+///
+/// This generates a *lot* of log spam, sadly, because URLSesson et al seem to presume that you won't ever really have any connection issues.  However, this spam is via OSLog, which only shows up in Xcode and the Console app.  If you run this demo executable e.g. via `swift run`, you'll be spared the horror.
 @main
 public struct NetworkScannerDemo {
     static func main() async throws {
@@ -29,6 +32,9 @@ public struct NetworkScannerDemo {
     }
 }
 
+/// An example probe which just waits a short while and randomly returns true or false.
+///
+/// This is really just for testing purposes - it's obviously not useful in a real application.
 func probeFake(address: String) async throws -> Bool {
     try await Task.sleep(nanoseconds: .random(in: 250_000...2_500_000))
     return Bool.random()
@@ -71,6 +77,11 @@ let session = {
     return s
 }()
 
+/// An example probe that looks for HTTPS servers.
+///
+/// It doesn't require them to be fully functional or correctly configured or to even handle HTTP requests successfully.  They just have to be HTTPS servers.
+///
+/// One grey area is SSL/TLS problems - it's assumed that many kinds of TLS issues, such as invalid server certificates, imply that it is indeed a HTTPS server.  Given the 443 port being used.  But strictly-speaking it's possible that something that's _not_ a HTTPS server could be listening on the HTTPS port and using TLS.  But if so, why?!
 func probeHTTPS(address: String) async throws -> Bool {
     guard let URL = URL(string: "https://\(address)") else {
         throw Errors.unableToConstructHTTPSURL(address: address)
