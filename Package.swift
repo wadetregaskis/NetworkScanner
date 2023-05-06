@@ -2,6 +2,17 @@
 
 import PackageDescription
 
+let swiftSettings: [SwiftSetting] = [
+   .enableUpcomingFeature("BareSlashRegexLiterals"),
+   .enableUpcomingFeature("ConciseMagicFile"),
+   .enableUpcomingFeature("ExistentialAny"),
+   .enableUpcomingFeature("ForwardTrailingClosures"),
+   .enableUpcomingFeature("ImplicitOpenExistentials"),
+   .enableUpcomingFeature("StrictConcurrency"),
+   // Sadly StrictConcurrency isn't actually recognised by the Swift compiler as an upcoming feature, due to an apparent oversight by the compiler team.  So "unsafe" flags have to be used.  But if you do use them, you can't then actually _use_ the package from any other package - the Swift Package Manager will throw up all over the idea with compiler errors.  Sigh.
+   //.unsafeFlags(["-Xfrontend", "-strict-concurrency=complete", "-enable-actor-data-race-checks"]),
+]
+
 let package = Package(
     name: "NetworkScanner",
     platforms: [
@@ -31,9 +42,11 @@ let package = Package(
                 .product(name: "AsyncAlgorithms", package: "swift-async-algorithms"),
                 .product(name: "Logging", package: "swift-log"),
                 .product(name: "NetworkInterfaceInfo", package: "NetworkInterfaceInfo"),
-                .product(name: "NetworkInterfaceChangeMonitoring", package: "NetworkInterfaceInfo")]),
+                .product(name: "NetworkInterfaceChangeMonitoring", package: "NetworkInterfaceInfo")],
+            swiftSettings: swiftSettings),
         .executableTarget(
             name: "NetworkScannerDemo",
-            dependencies: ["NetworkScanner"]),
+            dependencies: ["NetworkScanner"],
+            swiftSettings: swiftSettings),
     ]
 )
