@@ -19,7 +19,7 @@ public struct NetworkScanner<HitData: Sendable, MissData: Sendable>: AsyncSequen
     private let reportMisses: Bool
     private let concurrencyLimit: Int?
     private let log: Logger?
-    private let probe: (String) async throws -> Result.Conclusion
+    private let probe: @Sendable (String) async throws -> Result.Conclusion
 
     /// Scans local networks.
     ///
@@ -57,7 +57,7 @@ public struct NetworkScanner<HitData: Sendable, MissData: Sendable>: AsyncSequen
                 reportMisses: Bool = false,
                 concurrencyLimit: Int? = nil,
                 logger: Logger? = nil,
-                probe: @escaping (String) async throws -> Result.Conclusion) {
+                probe: @Sendable @escaping (String) async throws -> Result.Conclusion) {
         self.mode = .localNetworks(interfaceFilter: interfaceFilter, oneFullScanOnly: oneFullScanOnly)
         self.reportMisses = reportMisses
         self.concurrencyLimit = concurrencyLimit
@@ -93,7 +93,7 @@ public struct NetworkScanner<HitData: Sendable, MissData: Sendable>: AsyncSequen
                 reportMisses: Bool = false,
                 concurrencyLimit: Int? = nil,
                 logger: Logger? = nil,
-                probe: @escaping (String) async throws -> Result.Conclusion) {
+                probe: @Sendable @escaping (String) async throws -> Result.Conclusion) {
         self.mode = .arbitraryNetwork(address: networkAddress, netmask: netmask)
         self.reportMisses = reportMisses
         self.concurrencyLimit = concurrencyLimit
@@ -139,7 +139,7 @@ public struct NetworkScanner<HitData: Sendable, MissData: Sendable>: AsyncSequen
                          reportMisses: Bool,
                          concurrencyLimit: Int?,
                          log: Logger?,
-                         probe: @escaping (String) async throws -> Result.Conclusion) {
+                         probe: @Sendable @escaping (String) async throws -> Result.Conclusion) {
             let labelConstructor = {
                 let missVoid = Void.self != MissData.self
                 let anyVoid = Void.self != HitData.self || missVoid
