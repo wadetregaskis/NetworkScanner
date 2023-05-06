@@ -219,6 +219,9 @@ public struct NetworkScanner<HitData: Sendable, MissData: Sendable>: AsyncSequen
                     }
 
                     channel.finish()
+                } catch is CancellationError {
+                    log.info("Scanning cancelled.")
+                    channel.finish()
                 } catch {
                     log.info("Scanning failed with error:\n\(error)")
                     channel.fail(error)
