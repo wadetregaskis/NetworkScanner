@@ -45,7 +45,7 @@ public struct NetworkScanner<HitData: Sendable, MissData: Sendable>: AsyncSequen
     ///
     ///     A too-low value will cause scanning to take longer than necessary.
     ///
-    ///     A too-high value can cause scanning to fail due for any of various reasons, such as application or OS resource exhaustion (e.g. memory, or file descriptors), or even defensive reactions from networking equipment (e.g. treating this host as abusive and throttling or blocking its traffic).  It can also cause false negatives due to network congestion.  Ironically, it can even reduce scanning speed by causing too much overhead in handling many concurrent probes (although on most systems this requires extraordinarily high concurrency).
+    ///     A too-high value can cause scanning to fail for any of various reasons, such as application or OS resource exhaustion (e.g. memory, or file descriptors), or even defensive reactions from networking equipment (e.g. treating this host as abusive and throttling or blocking its traffic).  It can also cause false negatives due to network congestion.  Ironically, it can even reduce scanning speed by causing too much overhead in handling many concurrent probes (although on most systems this requires extraordinarily high concurrency).
     ///
     ///     By default there is _no concurrency limit_, which is usually fine if the available networks are small (e.g. class C networks, such as the typical 192.168.0.0) but can very easily become problematic if the available networks happen to be larger.
     ///   - logger: The logger to use for [mostly] debugging output.  If `nil` (the default) a unique logger is created internally for each iterator.
@@ -81,7 +81,7 @@ public struct NetworkScanner<HitData: Sendable, MissData: Sendable>: AsyncSequen
     ///
     ///     A too-low value will cause scanning to take longer than necessary.
     ///
-    ///     A too-high value can cause scanning to fail due for any of various reasons, such as application or OS resource exhaustion (e.g. memory, or file descriptors), or even defensive reactions from networking equipment (e.g. treating this host as abusive and throttling or blocking its traffic).  It can also cause false negatives due to network congestion.  Ironically, it can even reduce scanning speed by causing too much overhead in handling many concurrent probes (although on most systems this requires extraordinarily high concurrency).
+    ///     A too-high value can cause scanning to fail for any of various reasons, such as application or OS resource exhaustion (e.g. memory, or file descriptors), or even defensive reactions from networking equipment (e.g. treating this host as abusive and throttling or blocking its traffic).  It can also cause false negatives due to network congestion.  Ironically, it can even reduce scanning speed by causing too much overhead in handling many concurrent probes (although on most systems this requires extraordinarily high concurrency).
     ///
     ///     By default there is _no concurrency limit_, which is usually fine if the available networks are small (e.g. class C networks, such as the typical 192.168.0.0) but can very easily become problematic if the available networks happen to be larger.
     ///   - logger: The logger to use for [mostly] debugging output.  If `nil` (the default) a unique logger is created internally for each iterator.
