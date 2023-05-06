@@ -52,6 +52,10 @@ public struct NetworkScanner<HitData: Sendable, MissData: Sendable>: AsyncSequen
     ///   - probe: The test to run against each host, to determine if it is a "hit" or "miss".
     ///
     ///     The test can be practically anything you wish - e.g. a simple TCP connection attempt, a HTTPS attempt, a HTTPS POST and interrogation of the response, etc.
+    ///
+    ///     If this probe throws an exception the scanner terminates, cancelling any remaining probes.
+    ///
+    ///     Furthermore, be mindful about what exception _types_ you throw from this probe function.  The standard ``CancellationError`` causes the iterator to simply end early, without throwing an exception to the calling code.  All other exceptions propagate out.  e.g. if you're using `URLSession` in your probe, consider catching `URLError.cancelled` within your probe and translating it to the standard ``CancellationError``.
     public init(interfaceFilter: @escaping (NetworkInterface) -> Bool = { !$0.loopback },
                 oneFullScanOnly: Bool = false,
                 reportMisses: Bool = false,
@@ -88,6 +92,10 @@ public struct NetworkScanner<HitData: Sendable, MissData: Sendable>: AsyncSequen
     ///   - probe: The test to run against each host, to determine if it is a "hit" or "miss".
     ///
     ///     The test can be practically anything you wish - e.g. a simple TCP connection attempt, a HTTPS attempt, a HTTPS POST and interrogation of the response, etc.
+    ///
+    ///     If this probe throws an exception the scanner terminates, cancelling any remaining probes.
+    ///
+    ///     Furthermore, be mindful about what exception _types_ you throw from this probe function.  The standard ``CancellationError`` causes the iterator to simply end early, without throwing an exception to the calling code.  All other exceptions propagate out.  e.g. if you're using `URLSession` in your probe, consider catching `URLError.cancelled` within your probe and translating it to the standard ``CancellationError``.
     public init(networkAddress: IPv4Address,
                 netmask: IPv4Address,
                 reportMisses: Bool = false,
