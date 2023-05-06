@@ -117,7 +117,7 @@ func probeHTTPS(address: String) async throws -> NetworkScanner<HitNature, Error
     } catch let error as URLError where missErrorCodes.contains(error.errorCode) {
         print("Couldn't connect to \(address).")
         return .miss(error)
-    } catch let error as URLError where NSURLErrorCancelled == error.errorCode {
+    } catch URLError.cancelled {
         // Translate URLSession's bespoke cancellation exception into standard cancellation errors, as standard cancellation errors aren't propagated out of NetworkScanner - they just result in scanning ending prematurely but gracefully.
         throw CancellationError()
     }
