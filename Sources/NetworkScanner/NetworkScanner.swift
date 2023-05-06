@@ -214,15 +214,7 @@ public struct NetworkScanner<HitData: Sendable, MissData: Sendable>: AsyncSequen
                         }
 
                         log.info("Wrapping up results…")
-
-                        for try await _ in taskGroup {
-                            guard !Task.isCancelled else {
-                                log.info("Cancelled.")
-                                taskGroup.cancelAll()
-                                break
-                            }
-                        }
-
+                        try await taskGroup.waitForAll()
                         log.info("No more results.")
                     }
 
