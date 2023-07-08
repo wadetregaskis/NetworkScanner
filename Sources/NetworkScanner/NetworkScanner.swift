@@ -140,8 +140,8 @@ public struct NetworkScanner<HitData: Sendable, MissData: Sendable>: AsyncSequen
     }
 
     public final class Iterator: AsyncIteratorProtocol {
-        private var overarchingTask: Task<Void, Error>? = nil
-        private let channel = AsyncThrowingChannel<Result, Error>()
+        private var overarchingTask: Task<Void, any Error>? = nil
+        private let channel = AsyncThrowingChannel<Result, any Error>()
 
         fileprivate init(mode: Mode,
                          reportMisses: Bool,
@@ -237,8 +237,8 @@ public struct NetworkScanner<HitData: Sendable, MissData: Sendable>: AsyncSequen
                                  interfaceFilter: (NetworkInterface) -> Bool,
                                  reportMisses: Bool,
                                  probe: @escaping (String) async throws -> Result.Conclusion,
-                                 channel: AsyncThrowingChannel<Result, Error>,
-                                 taskGroup: inout ThrowingTaskGroup<Void, Error>,
+                                 channel: AsyncThrowingChannel<Result, any Error>,
+                                 taskGroup: inout ThrowingTaskGroup<Void, any Error>,
                                  taskTokens: inout Int,
                                  log: Logger) async throws {
             guard let genericAddress = interface.address,
@@ -273,8 +273,8 @@ public struct NetworkScanner<HitData: Sendable, MissData: Sendable>: AsyncSequen
                                  netmask: IPv4Address,
                                  reportMisses: Bool,
                                  probe: @escaping (String) async throws -> Result.Conclusion,
-                                 channel: AsyncThrowingChannel<Result, Error>,
-                                 taskGroup: inout ThrowingTaskGroup<Void, Error>,
+                                 channel: AsyncThrowingChannel<Result, any Error>,
+                                 taskGroup: inout ThrowingTaskGroup<Void, any Error>,
                                  taskTokens: inout Int,
                                  log: Logger) async throws {
             let startAddress = netmask.address & networkAddress.address
