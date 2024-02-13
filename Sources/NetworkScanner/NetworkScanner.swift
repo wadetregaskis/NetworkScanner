@@ -53,6 +53,10 @@ public struct NetworkScanner<HitData: Sendable, MissData: Sendable>: AsyncSequen
 
     /// Scans local networks.
     ///
+    /// Scanning does not actually start until you start iterating over the results (`for result in scanner { … }`) or manually create the iterator (``makeAsyncIterator()``).
+    ///
+    /// Multiple iterations will trigger multiple independent scans (which may overlap in time, if the iterations are performed concurrently).
+    ///
     /// - Parameters:
     ///   - interfaceFilter: An optional filter to determine which network interfaces are scanned.
     ///
@@ -100,6 +104,10 @@ public struct NetworkScanner<HitData: Sendable, MissData: Sendable>: AsyncSequen
     }
 
     /// Scans the given network / address range.
+    ///
+    /// Scanning does not actually start until you start iterating over the results (`for result in scanner { … }`) or manually create the iterator (``makeAsyncIterator()``).
+    ///
+    /// Multiple iterations will trigger multiple independent scans (which may overlap in time, if the iterations are performed concurrently).
     ///
     /// - Parameters:
     ///   - networkAddress: The address of the network to scan, e.g. 192.168.0.0.
@@ -161,6 +169,9 @@ public struct NetworkScanner<HitData: Sendable, MissData: Sendable>: AsyncSequen
 
     public typealias Element = Result
 
+    /// Scanning starts when this method is called.
+    ///
+    /// This method may be called multiple times, and each time it returns an _independent_ iterator which performs the _full_ scan.  Multiple such iterators may be used at one time (although this is usually the result of user error, as performing the same scan multiple times in parallel is typically unnecessary, and inefficient).
     public func makeAsyncIterator() -> Iterator {
         return Iterator(mode: mode,
                         reportMisses: reportMisses,
