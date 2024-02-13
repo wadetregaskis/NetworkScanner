@@ -156,10 +156,12 @@ public struct NetworkScanner<HitData: Sendable, MissData: Sendable>: AsyncSequen
         ///
         /// Note that if the probe closure throws an exception, that is not represented by this enum - it is instead propagated back to the iterator of the ``NetworkScanner`` (as a real, thrown exception).
         public enum Conclusion: Sendable {
-            /// The probe succeeded (returned `true`).
+            /// The probe succeeded.
             case hit(HitData)
 
-            /// The probe returned `false`.
+            /// The probe _completed_ successfully but the target address did not meet is criteria.
+            ///
+            /// This is distinct from the probe actually _failing_, which is communicate by the probe throwing an exception (which causes scanning to abort entirely).
             case miss(MissData)
         }
 
