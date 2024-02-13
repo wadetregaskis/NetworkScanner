@@ -62,7 +62,7 @@ public struct NetworkScanner<HitData: Sendable, MissData: Sendable>: AsyncSequen
     ///
     ///     Note that some interfaces will be ignored irrespective of what this filter is (and this filter won't even be asked about them), because they intrinsically cannot be scanned or ``NetworkScanner`` doesn't currently support them.  This includes those that don't have addresses & netmasks, or aren't a supported interface type (e.g. non-IP interfaces).
     ///
-    ///     If unspecified, all non-loopback interfaces are scanned (within the constraints noted above).
+    ///     By default all non-loopback interfaces are scanned (within the constraints noted above).
     ///   - oneFullScanOnly: Scan just once or scan perpetually.
     ///
     ///     Irrespective of the value of this parameter, the scan starts with all currently active interfaces.  Once that is complete, this parameter determines if scanning ends (`true`) or perpetually monitors for network changes and performs additional scans where appropriate.
