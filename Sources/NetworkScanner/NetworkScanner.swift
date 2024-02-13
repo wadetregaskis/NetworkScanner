@@ -7,6 +7,36 @@ import NetworkInterfaceChangeMonitoring
 /// Scans networks for hosts that pass a given probe.
 ///
 /// Currently only IPv4 networks are supported.
+///
+/// ### Example
+///
+/// To find all HTTPS servers on the local network that respond successfully to a request for their main page:
+///
+///```swift
+///import Foundation
+///import NetworkScanner
+///
+///let scanner = NetworkScanner(concurrencyLimit: 250) { address in
+///    guard let URL = URL(string: "https://\(address)") else {
+///        throw Errors.unableToConstructURL(address: address)
+///    }
+///
+///    do {
+///        _ = try await session.data(from: URL)
+///        return .hit
+///    } catch {
+///        return .miss
+///    }
+///}
+///
+///for try await result in scanner {
+///    print(result) // e.g. "192.168.0.10: Hit"
+///}
+///
+///enum Errors: Error {
+///    case unableToConstructURL(address: String)
+///}
+///```
 public struct NetworkScanner<HitData: Sendable, MissData: Sendable>: AsyncSequence {
     fileprivate enum Mode {
         case localNetworks(interfaceFilter: (NetworkInterface) -> Bool,
