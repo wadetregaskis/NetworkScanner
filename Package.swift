@@ -31,9 +31,9 @@ let package = Package(
             targets: ["NetworkScannerDemo"]),
     ],
     dependencies: [
-        .package(url: "https://github.com/apple/swift-async-algorithms.git", .upToNextMajor(from: "0.0.0")),
+        .package(url: "https://github.com/apple/swift-async-algorithms.git", .upToNextMajor(from: "1.0.0")),
         .package(url: "https://github.com/apple/swift-log", .upToNextMajor(from: "1.0.0")),
-        .package(url: "https://github.com/wadetregaskis/NetworkInterfaceInfo.git", .upToNextMajor(from: "4.0.0")),
+        .package(url: "https://github.com/wadetregaskis/NetworkInterfaceInfo.git", .upToNextMajor(from: "5.0.0")),
     ],
     targets: [
         .target(
