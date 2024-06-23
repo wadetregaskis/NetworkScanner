@@ -42,7 +42,7 @@ func probeFake(address: String) async throws -> NetworkScanner<Void, Void>.Resul
     return Bool.random() ? .hit : .miss
 }
 
-class Delegate: NSObject, URLSessionDelegate, URLSessionDataDelegate {
+final class Delegate: NSObject, URLSessionDelegate, URLSessionDataDelegate {
     func urlSession(_ session: URLSession,
                              task: URLSessionTask,
                              willPerformHTTPRedirection response: HTTPURLResponse,
@@ -85,7 +85,7 @@ let session = {
 ///
 /// One grey area is SSL/TLS problems - it's assumed that many kinds of TLS issues, such as invalid server certificates, imply that it is indeed a HTTPS server.  Given the 443 port being used.  But strictly-speaking it's possible that something that's _not_ a HTTPS server could be listening on the HTTPS port and using TLS.  But if so, why?!
 @Sendable
-func probeHTTPS(address: String) async throws -> NetworkScanner<HitNature, Error>.Result.Conclusion {
+func probeHTTPS(address: String) async throws -> NetworkScanner<HitNature, any Error>.Result.Conclusion {
     guard let URL = URL(string: "https://\(address)") else {
         throw Errors.unableToConstructHTTPSURL(address: address)
     }

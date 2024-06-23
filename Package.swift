@@ -2,16 +2,26 @@
 
 import PackageDescription
 
-let swiftSettings: [SwiftSetting] = [
-   .enableUpcomingFeature("BareSlashRegexLiterals"),
-   .enableUpcomingFeature("ConciseMagicFile"),
-   .enableUpcomingFeature("ExistentialAny"),
-   .enableUpcomingFeature("ForwardTrailingClosures"),
-   .enableUpcomingFeature("ImplicitOpenExistentials"),
-   .enableUpcomingFeature("StrictConcurrency"),
-   // Sadly StrictConcurrency isn't actually recognised by the Swift compiler as an upcoming feature, due to an apparent oversight by the compiler team.  So "unsafe" flags have to be used.  But if you do use them, you can't then actually _use_ the package from any other package - the Swift Package Manager will throw up all over the idea with compiler errors.  Sigh.
-   //.unsafeFlags(["-Xfrontend", "-strict-concurrency=complete", "-enable-actor-data-race-checks"]),
-]
+let enables = ["AccessLevelOnImport",
+               "BareSlashRegexLiterals",
+               "ConciseMagicFile",
+               "DeprecateApplicationMain",
+               "DisableOutwardActorInference",
+               "DynamicActorIsolation",
+               "ExistentialAny",
+               "ForwardTrailingClosures",
+               //"FullTypedThrows", // Not ready yet.  https://forums.swift.org/t/where-is-fulltypedthrows/72346/15
+               "GlobalConcurrency",
+               "ImplicitOpenExistentials",
+               "ImportObjcForwardDeclarations",
+               "InferSendableFromCaptures",
+               "InternalImportsByDefault",
+               "IsolatedDefaultValues",
+               "StrictConcurrency"]
+
+let settings: [SwiftSetting] = enables.flatMap {
+    [.enableUpcomingFeature($0), .enableExperimentalFeature($0)]
+}
 
 let package = Package(
     name: "NetworkScanner",
@@ -43,10 +53,10 @@ let package = Package(
                 .product(name: "Logging", package: "swift-log"),
                 .product(name: "NetworkInterfaceInfo", package: "NetworkInterfaceInfo"),
                 .product(name: "NetworkInterfaceChangeMonitoring", package: "NetworkInterfaceInfo")],
-            swiftSettings: swiftSettings),
+            swiftSettings: settings),
         .executableTarget(
             name: "NetworkScannerDemo",
             dependencies: ["NetworkScanner"],
-            swiftSettings: swiftSettings),
+            swiftSettings: settings),
     ]
 )

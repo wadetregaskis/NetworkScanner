@@ -1,7 +1,7 @@
-import AsyncAlgorithms
-import Logging
-import NetworkInterfaceInfo
-import NetworkInterfaceChangeMonitoring
+private import AsyncAlgorithms
+public import Logging
+public import NetworkInterfaceInfo
+private import NetworkInterfaceChangeMonitoring
 
 
 /// Scans networks for hosts that pass a given probe.
@@ -38,8 +38,8 @@ import NetworkInterfaceChangeMonitoring
 ///}
 ///```
 public struct NetworkScanner<HitData: Sendable, MissData: Sendable>: AsyncSequence {
-    fileprivate enum Mode {
-        case localNetworks(interfaceFilter: (NetworkInterface) -> Bool,
+    fileprivate enum Mode: Sendable {
+        case localNetworks(interfaceFilter: @Sendable (NetworkInterface) -> Bool,
                            oneFullScanOnly: Bool)
         case arbitraryNetwork(address: IPv4Address,
                               netmask: IPv4Address)
@@ -90,7 +90,7 @@ public struct NetworkScanner<HitData: Sendable, MissData: Sendable>: AsyncSequen
     ///     If this probe throws an exception the scanner terminates, cancelling any remaining probes.
     ///
     ///     Furthermore, be mindful about what exception _types_ you throw from this probe function.  The standard ``CancellationError`` causes the iterator to simply end early, without throwing an exception to the calling code.  All other exceptions propagate out.  e.g. if you're using `URLSession` in your probe, consider catching `URLError.cancelled` within your probe and translating it to the standard ``CancellationError``.
-    public init(interfaceFilter: @escaping (NetworkInterface) -> Bool = { !$0.loopback },
+    public init(interfaceFilter: @Sendable @escaping (NetworkInterface) -> Bool = { !$0.loopback },
                 oneFullScanOnly: Bool = false,
                 reportMisses: Bool = false,
                 concurrencyLimit: Int? = nil,
@@ -279,7 +279,7 @@ public struct NetworkScanner<HitData: Sendable, MissData: Sendable>: AsyncSequen
         private static func scan(interface: NetworkInterface,
                                  interfaceFilter: (NetworkInterface) -> Bool,
                                  reportMisses: Bool,
-                                 probe: @escaping (String) async throws -> Result.Conclusion,
+                                 probe: @Sendable @escaping (String) async throws -> Result.Conclusion,
                                  channel: AsyncThrowingChannel<Result, any Error>,
                                  taskGroup: inout ThrowingTaskGroup<Void, any Error>,
                                  taskTokens: inout Int,
@@ -315,7 +315,7 @@ public struct NetworkScanner<HitData: Sendable, MissData: Sendable>: AsyncSequen
         private static func scan(networkAddress: IPv4Address,
                                  netmask: IPv4Address,
                                  reportMisses: Bool,
-                                 probe: @escaping (String) async throws -> Result.Conclusion,
+                                 probe: @Sendable @escaping (String) async throws -> Result.Conclusion,
                                  channel: AsyncThrowingChannel<Result, any Error>,
                                  taskGroup: inout ThrowingTaskGroup<Void, any Error>,
                                  taskTokens: inout Int,
