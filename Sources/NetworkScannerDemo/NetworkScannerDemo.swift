@@ -42,7 +42,7 @@ func probeFake(address: String) async throws -> NetworkScanner<Void, Void>.Resul
     return Bool.random() ? .hit : .miss
 }
 
-final class Delegate: NSObject, URLSessionDelegate, URLSessionDataDelegate {
+final class Delegate: NSObject, URLSessionDelegate, URLSessionDataDelegate, Sendable {
     func urlSession(_ session: URLSession,
                              task: URLSessionTask,
                              willPerformHTTPRedirection response: HTTPURLResponse,
